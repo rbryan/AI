@@ -137,6 +137,10 @@ class Prescience extends Thread{
 			for(AbstractActionableObject obj: teamObjects){
 				if(obj instanceof Ship){
 					Ship ship = (Ship) obj;
+					if(simulationKnowledge != null){
+						continue;
+
+					}
 				}
 			}
 
