@@ -365,12 +365,12 @@ class Prescience extends Thread{
 					Vector2D shipPosition = new Vector2D(ship.getPosition().getX(),ship.getPosition().getY());
 					Vector2D aimPointPosition = new Vector2D(aimPoint.getX(),aimPoint.getY());
 
-					double shootProbability =  Math.pow((
+					double shootProbability =  (
 									1/Math.abs((shipPosition.getAngle() - 
 										aimVector.getAngle()))
 											* aimDistance /20 *
-									1/Math.abs(aimDistance/50 - knowledgeUpdates %
-										SIMULATION_TIMESTEP_SCALING_FACTOR)/5),2);
+									1/Math.abs(aimDistance/100/space.getTimestep() - knowledgeUpdates %
+										SIMULATION_TIMESTEP_SCALING_FACTOR)/5);
 
 					if(aimDistance < 200 && random.nextDouble() < shootProbability ){
 						//shoot
