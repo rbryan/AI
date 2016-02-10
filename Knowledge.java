@@ -93,7 +93,7 @@ public Set<AbstractActionableObject> getTeamObjects(){
 }
 
 public Toroidal2DPhysics getSpace(){
-	return space.deepClone();
+	return space;
 }
 
 public AbstractObject getClosestTo(Position location){
@@ -159,19 +159,23 @@ public AbstractObject getClosestTo(Position location){
 		return new Knowledge(space,teamObjects,nonActionables);
 	}
 
-	public Knowledge getEnergySources(){
+	public Knowledge getEnergySources(int minEnergy){
 		Set<AbstractObject> sources = new HashSet<AbstractObject>();
 		for(AbstractObject obj : allObjects){
-			if(obj instanceof Beacon || (obj instanceof Base && isTeamObject(obj))){
-				sources.add(obj);
+			if(obj instanceof Beacon){ 
+				if(Beacon.BEACON_ENERGY_BOOST > minEnergy)
+					sources.add(obj);
+			}else if(obj instanceof Base && isTeamObject(obj)){
+				Base b = (Base) obj;
+				if(b.getEnergy() > minEnergy)
+					sources.add(obj);
+
 			}
 		}
 		return new Knowledge(space,teamObjects,sources);
 
 	}
-
-
-
+	
 
 
 	public Knowledge getObjectsInRange(Position location, double inner, double outer){

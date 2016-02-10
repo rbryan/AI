@@ -64,8 +64,11 @@ public class RussellTeamClient extends spacesettlers.clients.TeamClient {
 
 	@Override
 	public void shutDown(Toroidal2DPhysics space) {
-		prescience.exit();
-
+		try{
+			prescience.exit();
+		}catch(Exception e){
+			e.printStackTrace();
+		}
 	}
 
 
@@ -84,12 +87,22 @@ public class RussellTeamClient extends spacesettlers.clients.TeamClient {
 
 	@Override
 	public void getMovementEnd(Toroidal2DPhysics space, Set<AbstractActionableObject> actionableObjects) {
-		prescience.getMovementEnd(space,actionableObjects);
+		try{
+			prescience.getMovementEnd(space,actionableObjects);
+		}catch(Exception e){
+			e.printStackTrace();
+		}
 	}
 
 	@Override
 	public Set<SpacewarGraphics> getGraphics() {
-		return prescience.getGraphics();
+		Set<SpacewarGraphics> graphics = null;
+		try{
+			 graphics = prescience.getGraphics();
+		}catch(Exception e){
+			e.printStackTrace();
+		}
+		return graphics;
 	}
 
 
@@ -101,7 +114,13 @@ public class RussellTeamClient extends spacesettlers.clients.TeamClient {
 			Set<AbstractActionableObject> actionableObjects, 
 			ResourcePile resourcesAvailable, 
 			PurchaseCosts purchaseCosts) {
-		return prescience.getTeamPurchases(space,actionableObjects,resourcesAvailable,purchaseCosts);
+		Map<UUID, PurchaseTypes> purchases = null;
+		try{
+			purchases = prescience.getTeamPurchases(space,actionableObjects,resourcesAvailable,purchaseCosts);
+		}catch(Exception e){
+			e.printStackTrace();
+		}
+		return purchases;
 	}
 
 	/**
@@ -109,7 +128,13 @@ public class RussellTeamClient extends spacesettlers.clients.TeamClient {
 	 */
 	public Map<UUID, SpaceSettlersPowerupEnum> getPowerups(Toroidal2DPhysics space,
 			Set<AbstractActionableObject> actionableObjects) {
-		return prescience.getPowerups(space,actionableObjects);
+		Map<UUID, SpaceSettlersPowerupEnum> powerups = null;
+		try{
+			powerups = prescience.getPowerups(space,actionableObjects);
+		}catch(Exception e){
+			e.printStackTrace();
+		}
+		return powerups;
 	}
 
 

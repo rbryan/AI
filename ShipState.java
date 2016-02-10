@@ -58,6 +58,7 @@ class ShipState{
 	Position aimPoint;
 	ShipStateEnum state;
 	boolean shooting;
+	long lastShotTick;
 	
 
 	public ShipState(Ship ship,Position aimPoint){
@@ -65,6 +66,8 @@ class ShipState{
 		this.ship = ship;
 		this.aimPoint = aimPoint;
 		state = ShipStateEnum.GATHERING_RESOURCES;
+		long lastShotTick = 0;
+		boolean shooting = true;
 		stateUpdate();
 
 	}
@@ -80,6 +83,30 @@ class ShipState{
 	public ShipStateEnum getState(){
 		stateUpdate();
 		return state;
+	}
+
+	public Position getAimPoint(){
+		return aimPoint;
+	}
+
+	public void setAimPoint(Position newAimPoint){
+		aimPoint = newAimPoint;
+	}
+
+	public Ship getShip(){
+		return ship;
+	}
+
+	public void setShip(Ship newShip){
+		ship = newShip;
+	}
+
+	public long getLastShotTick(){
+		return lastShotTick;
+	}
+
+	public void setLastShotTick(long newLastShotTick){
+		lastShotTick = newLastShotTick;
 	}
 
 	public void stateUpdate(){

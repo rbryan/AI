@@ -23,7 +23,9 @@ package brya3525;
 		Knowledge
 		Prescience
 		SpaceSimulation
-		LibrePD)
+		LibrePD
+		ShipStateEnum
+		ShipState)
 	(spacesettlers
 		(actions
 			AbstractAction
@@ -82,9 +84,12 @@ class Prescience extends Thread{
 	Map<UUID, AbstractAction> teamActions;
 
 	HashSet<SpacewarGraphics> graphics;
-	Map<UUID, Position> aimPoints;
+	Map<UUID, ShipState> shipStates;
 
 	Random random;
+	Set<SpacewarGraphics> workingGraphics = new HashSet<SpacewarGraphics>();
+	Map<UUID, AbstractAction> workingActions = new HashMap<UUID, AbstractAction>();
+	Map<UUID, ShipState> workingShipStates = new HashMap<UUID, ShipState>();
 	/////////////////////////////////////////////////////////
 
 
@@ -97,7 +102,10 @@ class Prescience extends Thread{
 		this.exit=false;
 		this.executor = Executors.newSingleThreadExecutor();
 		this.knowledgeUpdates = 0;
-		this.aimPoints = new HashMap<UUID, Position>();
+		this.shipStates = new HashMap<UUID, ShipState>();
+		workingGraphics = new HashSet<SpacewarGraphics>();
+		workingActions = new HashMap<UUID, AbstractAction>();
+		workingShipStates = new HashMap<UUID, ShipState>();
 		random = new Random(20);
 		//Look at me being such a nice person and not causing everyone else
 		//to time out by setting my thread priority too high.
@@ -123,12 +131,7 @@ class Prescience extends Thread{
 	}
 
 	public void run(){
-		try{
 		Toroidal2DPhysics space = null;
-		Set<SpacewarGraphics> currentGraphics = new HashSet<SpacewarGraphics>();
-		Map<UUID, AbstractAction> currentActions = new HashMap<UUID, AbstractAction>();
-		AbstractObject base = null;
-
 
 		while(!exit){
 			//If we don't have new information to use then wait until
@@ -138,14 +141,12 @@ class Prescience extends Thread{
 			}else{
 				//The Knowledge isn't new anymore
 				newKnowledge = false;
-				currentActions.clear();
+				workingActions.clear();
 				long ticksSinceKnowledgeUpdate = knowledgeUpdates % 20;
 				if(ticksSinceKnowledgeUpdate == 0){
-					currentGraphics.clear();
+					workingGraphics.clear();
 
-					synchronized(knowledge){
-						space = knowledge.getSpace();
-					}
+					space = knowledge.getSpace();
 
 					spaceSim = runSimulation(space);
 					simulationKnowledge = new Knowledge(spaceSim,knowledge.getTeamObjects());
@@ -154,84 +155,106 @@ class Prescience extends Thread{
 						if(obj instanceof Ship){
 							Ship ship = (Ship) obj;
 							SpacewarGraphics graphic = new CircleGraphics(1, ship.getTeamColor(), ship.getPosition().deepCopy());
-							currentGraphics.add(graphic);
+							workingGraphics.add(graphic);
 
 							
 						}else{
 							SpacewarGraphics graphic = new CircleGraphics(1, Color.RED, obj.getPosition().deepCopy());
-							currentGraphics.add(graphic);
+							workingGraphics.add(graphic);
 						}
 					}
 				}
 
 				for(AbstractActionableObject obj: knowledge.getTeamObjects()){
-					synchronized(aimPoints){
-						aimPoints.clear();
-					}
 					if(obj instanceof Ship){
 						Ship ship = (Ship) obj;
-						if(simulationKnowledge != null){
-							Position aimPoint = null;
-							Position goal = null;
-							AbstractObject goalObject = null;
+						AbstractAction movement = getShipMovement(ship,simulationKnowledge);
+						workingActions.put(ship.getId(),movement);
 
-							 /* To be critically damped, the parameters must satisfy:
-							 * 2 * sqrt(Kp) = Kv*/
-							LibrePD pdController = new LibrePD(4.47,5,0.8,0.16);
-
-							if(ship.getEnergy() < 2000 && base != null){
-								goalObject = knowledge.getEnergySources().getClosestTo(ship.getPosition());
-								goal = goalObject.getPosition();
-							}else if(ship.getMass() > 300){
-								goalObject = knowledge.getAllTeamObjects()
-											.getBases()
-											.getClosestTo(ship.getPosition());
-								goal = goalObject.getPosition();
-							}else{
-								goalObject = knowledge.getMineableAsteroids().getClosestTo(ship.getPosition());
-								goal = goalObject.getPosition();
-							}
-
-
-							aimPoint = simulationKnowledge.getNonActionable().
-													getShips().
-													getClosestTo(ship.getPosition()).
-													getPosition();
-
-							AbstractAction movement = pdController.getRawAction(space,ship.getPosition(),goal,aimPoint);
-
-							currentActions.put(ship.getId(),movement);
-
-							SpacewarGraphics aimpointgraphic = new CircleGraphics(5, Color.GREEN,aimPoint);
-							currentGraphics.add(aimpointgraphic);
-								
-
-
-							synchronized(aimPoints){
-								aimPoints.put(ship.getId(),aimPoint);
-							}
-
-
-						}
-					}else{
-						base = obj;
 					}
 				}
 			}
 
+			synchronized(shipStates){
+				shipStates.clear();
+				shipStates.putAll(workingShipStates);
+			}
 			synchronized(teamActions){
 				teamActions.clear();
-				teamActions.putAll(currentActions);
+				teamActions.putAll(workingActions);
 			}
 
 			synchronized(graphics){
-				graphics.addAll(currentGraphics);
+				graphics.addAll(workingGraphics);
 			}
 
-		}}catch(Exception e){
-			e.printStackTrace();
 		}
 
+	}
+
+	public AbstractAction getShipMovement(Ship ship, Knowledge simulationKnowledge){
+		if(simulationKnowledge == null)
+			simulationKnowledge = knowledge;
+	
+		Toroidal2DPhysics space = knowledge.getSpace();
+		AbstractAction movement = null;
+		ShipState state = null;
+		ShipStateEnum currentShipState = null;
+		Position aimPoint = null;
+		Position goal = null;
+		AbstractObject goalObject = null;
+		 /* To be critically damped, the parameters must satisfy:
+		 * 2 * sqrt(Kp) = Kv*/
+		LibrePD pdController = new LibrePD(4.47,5,0.8,0.16);
+
+
+		state = workingShipStates.get(ship.getId());
+		
+		if(state == null){
+			state = new ShipState(ship,aimPoint);
+		}else{
+			state.setShip(ship);
+		}
+
+		currentShipState = state.getState();
+
+		switch(currentShipState){
+			case GATHERING_ENERGY:
+				goalObject = knowledge.getEnergySources(500).getClosestTo(ship.getPosition());
+				goal = goalObject.getPosition();
+				state.setShooting(false);
+				break;
+			case DELIVERING_RESOURCES:
+				goalObject = knowledge.getAllTeamObjects()
+							.getBases()
+							.getClosestTo(ship.getPosition());
+				goal = goalObject.getPosition();
+				state.setShooting(true);
+				break;
+			case GATHERING_RESOURCES:
+			default:
+				goalObject = knowledge.getMineableAsteroids().getClosestTo(ship.getPosition());
+				goal = goalObject.getPosition();
+				state.setShooting(true);
+
+		}
+
+
+		aimPoint = simulationKnowledge.getNonActionable().
+								getShips().
+								getClosestTo(ship.getPosition()).
+								getPosition();
+		state.setAimPoint(aimPoint);
+
+
+		workingShipStates.put(ship.getId(),state);
+
+		SpacewarGraphics aimpointgraphic = new CircleGraphics(2, Color.GREEN,aimPoint);
+		workingGraphics.add(aimpointgraphic);
+
+		movement = pdController.getRawAction(space,ship.getPosition(),goal,aimPoint);
+
+		return movement;
 	}
 
 
@@ -300,12 +323,19 @@ class Prescience extends Thread{
 		for(AbstractActionableObject obj : actionableObjects){
 			if(obj instanceof Ship){
 				Ship ship = (Ship) obj;
+				ShipState state = null;
 				Position aimPoint = null;
+				long lastShotTick = 0;
 
-				synchronized(aimPoints){
-					aimPoint = aimPoints.get(ship.getId());
+				synchronized(shipStates){
+					state = shipStates.get(ship.getId());
+					if(state != null){
+						aimPoint = state.getAimPoint();
+						lastShotTick = state.getLastShotTick();
+					}
 				}
-				if(aimPoint != null){
+
+				if(aimPoint != null && state.getShooting() && lastShotTick - knowledgeUpdates > 1){
 
 					Vector2D aimVector = space.findShortestDistanceVector(ship.getPosition(),aimPoint);
 					double aimDistance = aimVector.getMagnitude();
@@ -322,25 +352,19 @@ class Prescience extends Thread{
 
 					if(aimDistance < 200 && random.nextDouble() < shootProbability ){
 						//shoot
+						synchronized(shipStates){
+							state.setLastShotTick(knowledgeUpdates);
+						}
 						AbstractWeapon newBullet = ship.getNewWeapon(SpaceSettlersPowerupEnum.FIRE_MISSILE);
 						if(newBullet != null){
 							powerupMap.put(ship.getId(), SpaceSettlersPowerupEnum.FIRE_MISSILE);
 						}
-/*
-						SpacewarGraphics shot = new CircleGraphics(1,Color.RED,ship.getPosition());
-						synchronized(graphics){
-							graphics.add(shot);
-						}
-*/
-
-
 					}
 				}
 			}
-
 		}
-		return powerupMap;
-		
-	}
 
+		return powerupMap;
+
+	}
 }
