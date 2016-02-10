@@ -55,7 +55,11 @@ public class RussellTeamClient extends spacesettlers.clients.TeamClient {
 	@Override
 	public void initialize(Toroidal2DPhysics space) {
 		this.prescience = new Prescience(space);
-		prescience.start();
+		try{
+			prescience.start();
+		}catch(Exception e){
+			e.printStackTrace();
+		}
 	}
 
 	@Override
@@ -69,7 +73,13 @@ public class RussellTeamClient extends spacesettlers.clients.TeamClient {
 	public Map<UUID, AbstractAction> 
 			getMovementStart(Toroidal2DPhysics space,
 					 Set<AbstractActionableObject> actionableObjects) {
-				return prescience.getMovementStart(space,actionableObjects);
+				Map<UUID, AbstractAction> newActions = null;
+				try{
+					newActions = prescience.getMovementStart(space,actionableObjects);
+				}catch(Exception e){
+					e.printStackTrace();
+				}
+				return newActions;
 	}
 
 	@Override

@@ -6,7 +6,8 @@ package brya3525;
 			(java
 				(util
 				 	Set
-					HashSet))
+					HashSet
+					UUID))
 			(spacesettlers
 			 	(objects
 				 	Asteroid
@@ -36,43 +37,68 @@ public class Knowledge{
 	//it's allObjects
 	Set<AbstractObject> allObjects;
 	Toroidal2DPhysics space;
+	Set<AbstractActionableObject> teamObjects;
 	
 	public Knowledge(Toroidal2DPhysics gamespace){
 		allObjects = new HashSet<AbstractObject>();
 		this.allObjects.addAll(gamespace.getAllObjects());
+		this.teamObjects = null;
+		this.space=gamespace;
+	}
+
+	public Knowledge(Toroidal2DPhysics gamespace, Set<AbstractActionableObject> teamObjects){
+		allObjects = new HashSet<AbstractObject>();
+		this.allObjects.addAll(gamespace.getAllObjects());
+		this.teamObjects = teamObjects;
 		this.space=gamespace;
 	}
 
 	//This constructor is used for creating smaller knowledge sets
-	public Knowledge(Toroidal2DPhysics gamespace, Set<AbstractObject> objects){
+	public Knowledge(Toroidal2DPhysics gamespace,Set<AbstractActionableObject> teamObjects, Set<AbstractObject> objects){
 		allObjects = new HashSet<AbstractObject>();
 		allObjects.addAll(objects);
+		this.teamObjects = teamObjects; 
 		space = gamespace;
 	}
 
-	public void update(Toroidal2DPhysics gamespace){
+	public void update(Toroidal2DPhysics gamespace, Set<AbstractActionableObject> teamObjects){
 		allObjects.clear();
+		this.teamObjects = teamObjects;
 		allObjects.addAll(gamespace.getAllObjects());
 		space=gamespace;
 	}
-	
-	//
-	//
-	//What follows are the functions that don't return a knowledge object;
-	//
-	//
 
-	public Set<AbstractObject> getObjects(){
-		return allObjects;
+	public boolean isTeamObject(AbstractObject obj){
+		UUID id = obj.getId();
+		for(AbstractActionableObject actObj : teamObjects){
+			if(id.equals(actObj.getId())){
+				return true;
+			}
+		}
+		return false;
 	}
 
-	public Toroidal2DPhysics getSpace(){
-		return space.deepClone();
-	}
+//
+//
+//What follows are the functions that don't return a knowledge object;
+//
+//
 
-	public AbstractObject getClosest(Position location){
-		double closestDistance = Double.MAX_VALUE;
-		AbstractObject closest = null;
+public Set<AbstractObject> getObjects(){
+	return allObjects;
+}
+
+public Set<AbstractActionableObject> getTeamObjects(){
+	return teamObjects;
+}
+
+public Toroidal2DPhysics getSpace(){
+	return space.deepClone();
+}
+
+public AbstractObject getClosestTo(Position location){
+	double closestDistance = Double.MAX_VALUE;
+	AbstractObject closest = null;
 		for(AbstractObject obj: allObjects){
 			double dist = space.findShortestDistance(location,obj.getPosition());
 			if(dist < closestDistance){
@@ -84,10 +110,27 @@ public class Knowledge{
 		return closest;
 	}
 
+	public AbstractObject getById(UUID id){
+		for(AbstractObject obj : allObjects){
+			if (obj.getId().equals(id)){
+				
+				return obj;
+			}
+		}
+		return null;
+	}
+
+
 
 	//
 	//Everything from here on returns a knowledge object
 	//
+
+	public Knowledge getAllTeamObjects(){
+		Set<AbstractObject> obj = new HashSet<AbstractObject>(teamObjects);
+		return new Knowledge(space,teamObjects,obj);
+	}
+
 
 	public Knowledge addObjects(Set<AbstractObject> objects){
 		allObjects.addAll(objects);
@@ -95,13 +138,42 @@ public class Knowledge{
 	}
 
 	public Knowledge join(Knowledge know){
-		return new Knowledge(space).addObjects(know.getObjects());
+		return new Knowledge(space,teamObjects).addObjects(know.getObjects());
 	}
 
 	
 	//Return a set of all objects with
 	//minimum distance vectors having magnitude
 	//between inner and outer
+	
+	public Knowledge getNonActionable(){
+		Set<AbstractObject> nonActionables = new HashSet<AbstractObject>();
+		try{
+			for(AbstractObject obj : allObjects){
+				if(!isTeamObject(obj))
+					nonActionables.add(obj);
+			}
+		}catch(Exception e){
+			e.printStackTrace();
+		}
+		return new Knowledge(space,teamObjects,nonActionables);
+	}
+
+	public Knowledge getEnergySources(){
+		Set<AbstractObject> sources = new HashSet<AbstractObject>();
+		for(AbstractObject obj : allObjects){
+			if(obj instanceof Beacon || (obj instanceof Base && isTeamObject(obj))){
+				sources.add(obj);
+			}
+		}
+		return new Knowledge(space,teamObjects,sources);
+
+	}
+
+
+
+
+
 	public Knowledge getObjectsInRange(Position location, double inner, double outer){
 		Set<AbstractObject> objects = new HashSet<AbstractObject>();
 		for(AbstractObject object : allObjects){
@@ -112,11 +184,11 @@ public class Knowledge{
 			   }
 
 		}
-		return new Knowledge(space,objects);
+		return new Knowledge(space,teamObjects,objects);
 	}
 
 	public Knowledge getObjectsInRange(Position location, double outer){
-		return new Knowledge(space,getObjectsInRange(location,0,outer).getObjects());
+		return new Knowledge(space,teamObjects,getObjectsInRange(location,0,outer).getObjects());
 	}
 
 	~(define define-object-accessor
@@ -130,7 +202,7 @@ public class Knowledge{
 							object "s.add(obj);"
 						"}"
 					"}"
-					"return new Knowledge(space, " object "s);"
+					"return new Knowledge(space, teamObjects, " object "s);"
 				"}\n\n")))
 
 	~(for-each define-object-accessor
@@ -141,8 +213,8 @@ public class Knowledge{
 				Ship
 				))
 
-	public Knowledge getMineableAsteroids(Position location, double inner, double outer){
-		Set<AbstractObject> asteroids = getAsteroids().getObjectsInRange(location,inner,outer).getObjects();
+	public Knowledge getMineableAsteroids(){
+		Set<AbstractObject> asteroids = getAsteroids().getObjects();
 		Set<AbstractObject> mineable_asteroids = new HashSet<AbstractObject>();
 
 		for(AbstractObject asteroid : asteroids){
@@ -155,7 +227,7 @@ public class Knowledge{
 			}
 		}
 
-		return new Knowledge(space, mineable_asteroids);
+		return new Knowledge(space,teamObjects, mineable_asteroids);
 
 	}
 
