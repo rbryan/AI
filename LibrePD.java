@@ -88,7 +88,7 @@ class LibrePD{
 
 		double shipRotationalVelocity = position.getAngularVelocity();							
 
-		double aimAngle = new Vector2D(aimPoint).subtract(new Vector2D(position)).getAngle();
+		double aimAngle = space.findShortestDistanceVector(position,aimPoint).getAngle();
 
 		double shipAngle = position.getOrientation();
 
