@@ -317,7 +317,7 @@ class Prescience extends Thread{
 					boolean safeToMakeBase = true;;
 					for(AbstractActionableObject baseMaybe : actionableObjects){
 						if(baseMaybe instanceof Base){
-							if(space.findShortestDistance(obj.getPosition(),baseMaybe.getPosition()) < 1000)
+							if(space.findShortestDistance(obj.getPosition(),baseMaybe.getPosition()) < 200)
 								safeToMakeBase = false;
 
 						}
