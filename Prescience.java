@@ -41,6 +41,7 @@ package brya3525;
 			AbstractActionableObject
 			AbstractObject
 			Ship
+			Base
 			(powerups
 				SpaceSettlersPowerupEnum)
 			(resources
@@ -309,7 +310,28 @@ class Prescience extends Thread{
 			Set<AbstractActionableObject> actionableObjects, 
 			ResourcePile resourcesAvailable, 
 			PurchaseCosts purchaseCosts) {
-		return new HashMap<UUID,PurchaseTypes>();
+		HashMap<UUID, PurchaseTypes> purchases = new HashMap<UUID, PurchaseTypes>();
+		if(purchaseCosts.canAfford(PurchaseTypes.BASE, resourcesAvailable)){
+			for(AbstractActionableObject obj : actionableObjects){
+				if(obj instanceof Ship){
+					boolean safeToMakeBase = true;;
+					for(AbstractActionableObject baseMaybe : actionableObjects){
+						if(baseMaybe instanceof Base){
+							if(!(space.findShortestDistance(obj.getPosition(),baseMaybe.getPosition()) < 200))
+								safeToMakeBase = false;
+
+						}
+
+					}
+					if(safeToMakeBase){
+						purchases.put(obj.getId(),PurchaseTypes.BASE);
+						break;
+					}
+
+				}
+			}
+		}
+		return purchases;
 
 	}
 
@@ -335,7 +357,7 @@ class Prescience extends Thread{
 					}
 				}
 
-				if(aimPoint != null && state.getShooting() && lastShotTick - knowledgeUpdates > 1){
+				if(aimPoint != null && state.getShooting() && knowledgeUpdates - lastShotTick > 1){
 
 					Vector2D aimVector = space.findShortestDistanceVector(ship.getPosition(),aimPoint);
 					double aimDistance = aimVector.getMagnitude();
@@ -359,6 +381,9 @@ class Prescience extends Thread{
 						if(newBullet != null){
 							powerupMap.put(ship.getId(), SpaceSettlersPowerupEnum.FIRE_MISSILE);
 						}
+					}else{
+						powerupMap.put(ship.getId(),SpaceSettlersPowerupEnum.DOUBLE_BASE_HEALING_SPEED);
+
 					}
 				}
 			}
