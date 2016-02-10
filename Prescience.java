@@ -169,7 +169,7 @@ class Prescience extends Thread{
 				for(AbstractActionableObject obj: knowledge.getTeamObjects()){
 					if(obj instanceof Ship){
 						Ship ship = (Ship) obj;
-						AbstractAction movement = getShipMovement(ship,simulationKnowledge);
+						AbstractAction movement = getShipMovement(ship);
 						workingActions.put(ship.getId(),movement);
 
 					}
@@ -193,7 +193,7 @@ class Prescience extends Thread{
 
 	}
 
-	public AbstractAction getShipMovement(Ship ship, Knowledge simulationKnowledge){
+	public AbstractAction getShipMovement(Ship ship){
 		if(simulationKnowledge == null)
 			simulationKnowledge = knowledge;
 	
